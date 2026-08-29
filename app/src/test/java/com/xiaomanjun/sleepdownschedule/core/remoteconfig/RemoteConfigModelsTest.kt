@@ -2,7 +2,6 @@ package com.xiaomanjun.sleepdownschedule.core.remoteconfig
 
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class RemoteConfigModelsTest {
@@ -15,7 +14,6 @@ class RemoteConfigModelsTest {
         )
         assertEquals(1, bootstrap.schemaVersion)
         assertEquals(1787000000L, bootstrap.serverTime)
-        assertFalse(bootstrap.donations.published)
         assertEquals(RemoteAgreementSet(), bootstrap.agreements)
     }
 }

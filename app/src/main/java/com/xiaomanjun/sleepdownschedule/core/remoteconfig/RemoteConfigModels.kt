@@ -7,7 +7,6 @@ data class RemoteBootstrap(
     val schemaVersion: Int,
     val serverTime: Long,
     val agreements: RemoteAgreementSet = RemoteAgreementSet(),
-    val donations: RemoteDonationSection = RemoteDonationSection(),
     val transitions: RemoteTransitionConfig = RemoteTransitionConfig()
 )
 
@@ -16,24 +15,6 @@ data class RemoteBootstrap(
 data class RemoteTransitionConfig(
     val oplusViewSeamlessEnabled: Boolean = false,
     val oplusRouteAllowlist: Set<String> = emptySet()
-)
-
-@Serializable
-data class RemoteDonationSection(
-    val published: Boolean = false,
-    val title: String = "感谢每一份支持",
-    val message: String = "",
-    val entries: List<RemoteDonationEntry> = emptyList()
-)
-
-@Serializable
-data class RemoteDonationEntry(
-    val id: Long,
-    val supporterId: String,
-    val amountCents: Long,
-    val currency: String = "CNY",
-    val displayOrder: Long = 0,
-    val enabled: Boolean = true
 )
 
 @Serializable

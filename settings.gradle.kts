@@ -65,7 +65,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CourseSchedule"
+rootProject.name = "L-Curriculum"
 include(":app")
 include(":benchmark")
 

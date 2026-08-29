@@ -12,11 +12,6 @@ class RemoteConfigCacheTest {
             serverTime = 1_787_000_000,
             agreements = RemoteAgreementSet(
                 privacy = RemoteAgreementSummary(4, "隐私政策", "https://api.sleepdownschedule.cn/public/agreements/privacy/4", true, true)
-            ),
-            donations = RemoteDonationSection(
-                published = true,
-                title = "捐赠致谢",
-                entries = listOf(RemoteDonationEntry(1, "sleep-friend", 1234, "CNY"))
             )
         )
 

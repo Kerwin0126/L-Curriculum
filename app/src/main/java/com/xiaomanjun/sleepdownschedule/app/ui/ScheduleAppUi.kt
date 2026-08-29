@@ -412,7 +412,7 @@ sealed interface Screen {
 
 enum class HomeMode { Day, Week }
 enum class SettingsSection { Schedule, Notifications }
-enum class SettingsPage { Root, General, LiquidGlass, Widgets, DayAgent, Schedule, Notifications, ScheduleManager, BackupRestore, BackupPreview, About, Changelog, Donate, PrivacyPolicy }
+enum class SettingsPage { Root, General, LiquidGlass, Widgets, DayAgent, Schedule, Notifications, ScheduleManager, BackupRestore, BackupPreview, About, Changelog, PrivacyPolicy }
 
 /** Matches the navigation motion used by the bundled Miuix system-style navigator. */
 private class MiuixSettingsNavigationEasing(
@@ -463,7 +463,6 @@ private fun SettingsPage.title(): String = when (this) {
     SettingsPage.BackupPreview -> "恢复预览"
     SettingsPage.About -> "关于应用"
     SettingsPage.Changelog -> "关于应用"
-    SettingsPage.Donate -> "捐赠支持"
 	SettingsPage.PrivacyPolicy -> "隐私政策"
 }
 
@@ -4220,7 +4219,6 @@ internal fun AppTopBar(
                                 SettingsPage.BackupPreview -> "恢复预览"
                                 SettingsPage.About -> "关于应用"
                                 SettingsPage.Changelog -> "关于应用"
-                                SettingsPage.Donate -> "捐赠支持"
 								SettingsPage.PrivacyPolicy -> "隐私政策"
                             }
                         },
@@ -6287,7 +6285,15 @@ open class SettingsDetailActivityHost : ComponentActivity() {
                         )
                         SettingsPage.About -> AboutSettingsScreen(
                             state = state,
-                            backdrop = backdrop
+                            backdrop = backdrop,
+                            onPageChange = { target ->
+                                ActivityTransitionCoordinator.openImmediate(
+                                    this@SettingsDetailActivityHost,
+                                    TransitionRouteId.SettingsToSettingsDetail,
+                                    Intent(this@SettingsDetailActivityHost, SettingsDetailActivity::class.java)
+                                        .putExtra(SettingsDetailPageExtra, target.name)
+                                )
+                            }
                         )
                         SettingsPage.BackupRestore -> BackupRestoreSettingsScreen(
                             state = state,
@@ -6317,9 +6323,16 @@ open class SettingsDetailActivityHost : ComponentActivity() {
                         }
                         SettingsPage.Changelog -> AboutSettingsScreen(
                             state = state,
-                            backdrop = backdrop
+                            backdrop = backdrop,
+                            onPageChange = { target ->
+                                ActivityTransitionCoordinator.openImmediate(
+                                    this@SettingsDetailActivityHost,
+                                    TransitionRouteId.SettingsToSettingsDetail,
+                                    Intent(this@SettingsDetailActivityHost, SettingsDetailActivity::class.java)
+                                        .putExtra(SettingsDetailPageExtra, target.name)
+                                )
+                            }
                         )
-						SettingsPage.Donate -> DonateSettingsScreen(state, backdrop)
 						SettingsPage.PrivacyPolicy -> PrivacyPolicySettingsScreen(state, backdrop)
                         SettingsPage.ScheduleManager -> ScheduleManagerScreen(
                             state = state, backdrop = backdrop,
@@ -6950,9 +6963,8 @@ private fun SettingsPageContent(
                 )
             }
         }
-        SettingsPage.About -> AboutSettingsScreen(pageState, backdrop)
-        SettingsPage.Changelog -> AboutSettingsScreen(pageState, backdrop)
-		SettingsPage.Donate -> DonateSettingsScreen(pageState, backdrop)
+        SettingsPage.About -> AboutSettingsScreen(pageState, backdrop, onPageChange = onPageChange)
+        SettingsPage.Changelog -> AboutSettingsScreen(pageState, backdrop, onPageChange = onPageChange)
 		SettingsPage.PrivacyPolicy -> PrivacyPolicySettingsScreen(pageState, backdrop)
     }
 }
@@ -6996,7 +7008,7 @@ fun SettingsRootScreen(
             SettingsGroup(backdrop = backdrop, config = state.config, modifier = Modifier.fillMaxWidth()) {
                 top.yukonga.miuix.kmp.preference.ArrowPreference(
                     title = appName,
-                    summary = "开发：Liao",
+                    summary = "关于、版本与隐私政策",
                     startAction = {
                         Image(
                             painter = painterResource(R.mipmap.ic_launcher),
@@ -7259,13 +7271,17 @@ fun ScheduleNameDialog(
 }
 
 @Composable
-fun AboutSettingsScreen(state: AppState, backdrop: Backdrop?) {
+fun AboutSettingsScreen(
+    state: AppState,
+    backdrop: Backdrop?,
+    onPageChange: (SettingsPage) -> Unit
+) {
     val context = LocalContext.current
     val topPadding = detailContentTopPadding()
     val appName = remember {
         runCatching {
             context.packageManager.getApplicationLabel(context.applicationInfo).toString()
-        }.getOrDefault("课程表--Liao")
+        }.getOrDefault("LX 课程表")
     }
     val versionName = remember {
         runCatching {
@@ -7300,6 +7316,21 @@ fun AboutSettingsScreen(state: AppState, backdrop: Backdrop?) {
                     text = "版本 $versionName",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        item(key = "about-privacy") {
+            SettingsGroup(
+                backdrop = backdrop,
+                config = state.config,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 48.dp, start = 24.dp, end = 24.dp)
+            ) {
+                SettingsNavigationRow(
+                    title = "隐私政策",
+                    subtitle = "查看 LX 课程表隐私政策",
+                    onClick = { onPageChange(SettingsPage.PrivacyPolicy) }
                 )
             }
         }

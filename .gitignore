@@ -21,6 +21,7 @@ sleepdown_log_*.txt
 *.keystore
 /.sleepdown-secrets/
 /SleepDown-Server/
+/gradle/gradle-daemon-jvm.properties
 /.claude/
 /tmp/
 /.tmp-acceptance/
