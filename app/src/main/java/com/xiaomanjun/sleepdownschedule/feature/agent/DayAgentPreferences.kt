@@ -22,7 +22,13 @@ object DayAgentPreferences {
     val changes: Flow<Long> = mutableChanges
 
     fun hasDecision(context: Context): Boolean = prefs(context).getBoolean("has_decision", false)
-    fun isEnabled(context: Context): Boolean = prefs(context).getBoolean("enabled", false)
+    // 首次启用弹窗已移除：未做过启用决定（全新安装或旧版本未弹窗的用户）默认视为启用，
+    // 明确关闭过的用户保持关闭。
+    fun isEnabled(context: Context): Boolean {
+        val storage = prefs(context)
+        return if (!storage.getBoolean("has_decision", false)) true
+        else storage.getBoolean("enabled", false)
+    }
     fun isDailyAiEnabled(context: Context): Boolean = prefs(context).getBoolean("daily_ai_enabled", true)
     fun isWeatherEnabled(context: Context): Boolean = prefs(context).getBoolean("weather_enabled", true)
 

@@ -12,12 +12,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.max
 
 class DampedDragAnimation(
     private val animationScope: CoroutineScope,
@@ -31,16 +33,17 @@ class DampedDragAnimation(
     val onDrag: DampedDragAnimation.(size: IntSize, dragAmount: Offset) -> Unit,
 ) {
 
+    // 弹簧参数已整体提速：滑动、按压进度与缩放收尾都比原版更干脆，避免体感「慢半拍」。
     private val valueAnimationSpec =
-        spring(1f, 1000f, visibilityThreshold)
+        spring(1f, 1700f, visibilityThreshold)
     private val velocityAnimationSpec =
         spring(0.5f, 300f, visibilityThreshold * 10f)
     private val pressProgressAnimationSpec =
-        spring(1f, 1000f, 0.001f)
+        spring(1f, 1700f, 0.001f)
     private val scaleXAnimationSpec =
-        spring(0.6f, 250f, 0.001f)
+        spring(0.7f, 800f, 0.001f)
     private val scaleYAnimationSpec =
-        spring(0.7f, 250f, 0.001f)
+        spring(0.7f, 800f, 0.001f)
 
     private val valueAnimation =
         Animatable(initialValue, visibilityThreshold)
@@ -54,6 +57,8 @@ class DampedDragAnimation(
         Animatable(initialScale, 0.001f)
 
     private val mutatorMutex = MutatorMutex()
+
+    private var animationJob: Job? = null
 
     private val velocityTracker = VelocityTracker()
 
@@ -98,8 +103,11 @@ class DampedDragAnimation(
             awaitFrame()
             if (value != targetValue) {
                 val threshold = (valueRange.endInclusive - valueRange.start) * 0.025f
+                val remaining = abs(valueAnimation.value - valueAnimation.targetValue)
+                // 不等滑块完全停稳：走过约一半路程就开始松开按压态，让回缩与滑动尾段重叠。
+                val releaseGate = max(threshold, remaining * 0.45f)
                 snapshotFlow { valueAnimation.value }
-                    .filter { abs(it - valueAnimation.targetValue) < threshold }
+                    .filter { abs(it - valueAnimation.targetValue) < releaseGate }
                     .first()
             }
             launch { pressProgressAnimation.animateTo(0f, pressProgressAnimationSpec) }
@@ -116,7 +124,9 @@ class DampedDragAnimation(
     }
 
     fun animateToValue(value: Float) {
-        animationScope.launch {
+        // 最新一次请求优先：取消上一次未完成的滑动，避免快速连续切换时动画排队叠加。
+        animationJob?.cancel()
+        animationJob = animationScope.launch {
             mutatorMutex.mutate {
                 press()
                 val targetValue = value.coerceIn(valueRange)

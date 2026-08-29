@@ -127,45 +127,17 @@ fun TodayAgentHost(
 ) {
     val context = LocalContext.current
     var enabled by remember(date, state.config.id) { mutableStateOf(DayAgentPreferences.isEnabled(context)) }
-    var hasDecision by remember(date, state.config.id) { mutableStateOf(DayAgentPreferences.hasDecision(context)) }
     val preferenceVersion by DayAgentPreferences.changes.collectAsStateWithLifecycle(initialValue = 0L)
 
     LaunchedEffect(preferenceVersion) {
         enabled = DayAgentPreferences.isEnabled(context)
-        hasDecision = DayAgentPreferences.hasDecision(context)
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         enabled = DayAgentPreferences.isEnabled(context)
-        hasDecision = DayAgentPreferences.hasDecision(context)
     }
 
-    if (!hasDecision) {
-        LiquidAlertDialog(
-            title = "启用今日助手？",
-            message = "今日助手会在日视图显示下一节课、实时倒计时与天气。课程和倒计时均在本地计算，天气来自公开天气服务，不调用 AI。你可以随时在今日助手设置中关闭。",
-            actions = listOf(
-                LiquidAlertAction("暂不启用", LiquidAlertActionStyle.Secondary) {
-                    DayAgentPreferences.setEnabled(context, false)
-                    enabled = false
-                    hasDecision = true
-                },
-                LiquidAlertAction("启用", LiquidAlertActionStyle.Primary) {
-                    DayAgentPreferences.setEnabled(context, true)
-                    enabled = true
-                    hasDecision = true
-                }
-            ),
-            backdrop = backdrop,
-            config = state.config,
-            onDismissRequest = {
-                DayAgentPreferences.setEnabled(context, false)
-                enabled = false
-                hasDecision = true
-            }
-        )
-    }
-
+    // 首次启用弹窗已移除：默认即启用，可在「今日助手」设置中随时关闭。
     if (enabled) {
         TodayAgentCard(
             state = state,

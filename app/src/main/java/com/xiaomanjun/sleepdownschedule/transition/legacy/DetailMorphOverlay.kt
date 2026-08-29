@@ -144,7 +144,6 @@ fun DetailScheduleMorphOverlay(
     detailState: AppState,
     onMorphStateChange: (DetailMorphState) -> Unit,
     onSave: (ScheduleConfigEntity, List<PeriodEntity>) -> Unit,
-    onPreviewLiveUpdate: () -> Unit,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -366,7 +365,6 @@ fun DetailScheduleMorphOverlay(
                         backdrop = backdrop,
                         section = SettingsSection.Schedule,
                         onSave = onSave,
-                        onPreviewLiveUpdate = onPreviewLiveUpdate,
                         exitCommitRequest = exitCommitRequest,
                         onExitCommitFinished = { saved ->
                             if (saved) close(useToolbarDuration = exitUsesToolbarDuration)

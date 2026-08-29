@@ -1336,7 +1336,13 @@ fun CourseScheduleAppUi(
         todayDate
     }
     val homeReturnTargetWeek = if (beforeScheduleTerm) 1 else homeCurrentWeek
-    val homeShowingAnotherWeek = homeMode == HomeMode.Week && homeDisplayWeek != homeReturnTargetWeek
+    // 课程（日视图）按所显示日期是否今天判断，周课表按展示周是否本周判断：
+    // 只要滑离当前视图，顶部就提示「点击此处回到本周」。
+    val homeShowingAnotherWeek = if (homeMode == HomeMode.Day) {
+        homeDisplayDate != todayDate
+    } else {
+        homeDisplayWeek != homeReturnTargetWeek
+    }
     val homeCourseColorSignature = remember(visualState.config.id, visualState.courses) {
         visualState.courses
             .map(::courseCardColorKey)
@@ -2182,7 +2188,6 @@ fun CourseScheduleAppUi(
                         onSave = { config, periods ->
                             viewModel.saveConfigForSchedule(request.scheduleId, config, periods)
                         },
-                        onPreviewLiveUpdate = viewModel::previewLiveUpdate,
                         onFinished = {
                             detailMorphRequest = null
                             detailCaptureCoverBitmap = null
@@ -2543,7 +2548,6 @@ fun CourseScheduleAppUi(
                                         onUpdateConfig = viewModel::saveNotificationSettings,
                                         onUpdateGeneralConfig = viewModel::saveGeneralSettings,
                                         onUpdateHomeChromeBlurScale = viewModel::saveHomeChromeBlurScale,
-                                        onPreviewLiveUpdate = viewModel::previewLiveUpdate,
                                         exitCommitRequest = settingsExitRequest,
                                         onExitCommitFinished = { completed ->
                                             val action = pendingSettingsExitAction
@@ -4761,7 +4765,8 @@ fun FloatingDock(
                     officialHighlightAlpha = 0.07f,
                     officialShadowAlpha = 0.05f,
                     officialInnerShadowAlpha = 0.08f,
-                    chromaticAberrationEnabled = true,
+                    // 色差效果会抬高每帧渲染成本；dock 上关闭以减少滑动时掉帧。
+                    chromaticAberrationEnabled = false,
                     isLightThemeOverride = lightGlass,
                     lightContainerColor = HomeLightGlassSurfaceColor,
                     lightAccentColor = HomeLightGlassSelectedAccentColor,
@@ -6270,7 +6275,6 @@ open class SettingsDetailActivityHost : ComponentActivity() {
                                         viewModel.saveConfig(config, periods)
                                     }
                                 },
-                                onPreviewLiveUpdate = viewModel::previewLiveUpdate,
                                 exitCommitRequest = scheduleExitRequest,
                                 onExitCommitFinished = { saved -> if (saved) closeSettings() },
                                 onExitInterceptionChange = { interceptSystemBack = it }
@@ -6281,7 +6285,6 @@ open class SettingsDetailActivityHost : ComponentActivity() {
                             backdrop = backdrop,
                             section = SettingsSection.Notifications,
                             onSave = { config, _ -> viewModel.saveNotificationSettings(config) },
-                            onPreviewLiveUpdate = viewModel::previewLiveUpdate
                         )
                         SettingsPage.About -> AboutSettingsScreen(
                             state = state,
@@ -6637,7 +6640,6 @@ fun SettingsScreen(
     onUpdateConfig: (ScheduleConfigEntity) -> Unit,
     onUpdateGeneralConfig: (ScheduleConfigEntity) -> Unit = onUpdateConfig,
     onUpdateHomeChromeBlurScale: (Float) -> Unit,
-    onPreviewLiveUpdate: () -> Unit,
     onCreateSchedule: (String) -> Unit = {},
     onActivateSchedule: (Int, (() -> Unit)?) -> Unit = { _, _ -> },
     onRenameSchedule: (Int, String) -> Unit = { _, _ -> },
@@ -6807,7 +6809,6 @@ fun SettingsScreen(
                                 onUpdateConfig = onUpdateConfig,
                                 onUpdateGeneralConfig = onUpdateGeneralConfig,
                                 onUpdateHomeChromeBlurScale = onUpdateHomeChromeBlurScale,
-                                onPreviewLiveUpdate = onPreviewLiveUpdate,
                                 onCreateSchedule = onCreateSchedule,
                                 onActivateSchedule = onActivateSchedule,
                                 onRenameSchedule = onRenameSchedule,
@@ -6858,7 +6859,6 @@ fun SettingsScreen(
                 onUpdateConfig = onUpdateConfig,
                 onUpdateGeneralConfig = onUpdateGeneralConfig,
                 onUpdateHomeChromeBlurScale = onUpdateHomeChromeBlurScale,
-                onPreviewLiveUpdate = onPreviewLiveUpdate,
                 onCreateSchedule = onCreateSchedule,
                 onActivateSchedule = onActivateSchedule,
                 onRenameSchedule = onRenameSchedule,
@@ -6887,7 +6887,6 @@ private fun SettingsPageContent(
     onUpdateConfig: (ScheduleConfigEntity) -> Unit,
     onUpdateGeneralConfig: (ScheduleConfigEntity) -> Unit,
     onUpdateHomeChromeBlurScale: (Float) -> Unit,
-    onPreviewLiveUpdate: () -> Unit,
     onCreateSchedule: (String) -> Unit,
     onActivateSchedule: (Int, (() -> Unit)?) -> Unit,
     onRenameSchedule: (Int, String) -> Unit,
@@ -6925,7 +6924,6 @@ private fun SettingsPageContent(
             backdrop = backdrop,
             section = SettingsSection.Schedule,
             onSave = onSave,
-            onPreviewLiveUpdate = onPreviewLiveUpdate,
             exitCommitRequest = exitCommitRequest,
             onExitCommitFinished = onExitCommitFinished,
             onExitInterceptionChange = onExitInterceptionChange
@@ -6935,7 +6933,6 @@ private fun SettingsPageContent(
             backdrop = backdrop,
             section = SettingsSection.Notifications,
             onSave = { config, _ -> onUpdateConfig(config) },
-            onPreviewLiveUpdate = onPreviewLiveUpdate,
             exitCommitRequest = exitCommitRequest,
             onExitCommitFinished = onExitCommitFinished
         )
@@ -7008,7 +7005,7 @@ fun SettingsRootScreen(
             SettingsGroup(backdrop = backdrop, config = state.config, modifier = Modifier.fillMaxWidth()) {
                 top.yukonga.miuix.kmp.preference.ArrowPreference(
                     title = appName,
-                    summary = "关于、版本与隐私政策",
+                    summary = "Liao 开发",
                     startAction = {
                         Image(
                             painter = painterResource(R.mipmap.ic_launcher),
@@ -7065,7 +7062,7 @@ fun SettingsRootScreen(
                     SettingsDivider()
                     SettingsNavigationRow(
                         "通知设置",
-                        "上课提醒与实时活动",
+                        "上课提醒",
                         selected = selectedPage == SettingsPage.Notifications,
                         onClick = { onPageChange(SettingsPage.Notifications) }
                     )

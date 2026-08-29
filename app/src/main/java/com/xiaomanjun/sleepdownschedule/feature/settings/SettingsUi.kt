@@ -14,6 +14,7 @@ import com.xiaomanjun.sleepdownschedule.core.remoteconfig.*
 import com.xiaomanjun.sleepdownschedule.domain.schedule.PeriodTopologyOperation
 import com.xiaomanjun.sleepdownschedule.domain.schedule.allocatePeriodCountsByStartTimes
 import com.xiaomanjun.sleepdownschedule.feature.importing.*
+import com.xiaomanjun.sleepdownschedule.feature.reminder.NotificationScheduler
 
 import com.xiaomanjun.sleepdownschedule.core.identity.AppIconManager
 import com.xiaomanjun.sleepdownschedule.core.identity.AppIconMode
@@ -406,14 +407,6 @@ fun GeneralSettingsScreen(
                     backdrop = backdrop,
                     config = visualConfig,
                     onSelected = { applyChange(draft.copy(defaultWallpaperStyle = it)) }
-                )
-                SettingsDivider()
-                SettingsToggleRow(
-                    title = "实时活动按钮",
-                    subtitle = "在实时活动中显示取消提醒和勿扰按钮。",
-                    checked = draft.liveUpdateActionsEnabled,
-                    backdrop = backdrop,
-                    onCheckedChange = { applyChange(draft.copy(liveUpdateActionsEnabled = it)) }
                 )
                 SettingsDivider()
                 SettingsToggleRow(
@@ -1672,41 +1665,6 @@ fun SettingsChoiceRow(title: String, selected: NotificationMode, backdrop: Backd
 }
 
 @Composable
-fun SettingsLiveUpdateChipTextRow(
-    selected: LiveUpdateChipTextMode,
-    backdrop: Backdrop?,
-    config: ScheduleConfigEntity,
-    onSelected: (LiveUpdateChipTextMode) -> Unit
-) {
-    val options = listOf(
-        LiveUpdateChipTextMode.LOCATION,
-        LiveUpdateChipTextMode.COUNTDOWN,
-        LiveUpdateChipTextMode.NORMAL
-    )
-    val labels = listOf("地点", "倒计时", "课程名称")
-    // SHORT was removed from the settings surface. Treat old saved rows as the new course-name
-    // mode so opening this page never appears to select an invisible option.
-    val visibleSelected = if (selected == LiveUpdateChipTextMode.SHORT) {
-        LiveUpdateChipTextMode.NORMAL
-    } else {
-        selected
-    }
-    SleepDownLiquidDropdownPreference(
-        items = labels,
-        selectedIndex = options.indexOf(visibleSelected).coerceAtLeast(0),
-        title = "岛上缩略态",
-        summary = "可显示上课地点、剩余时间或课程名称。",
-        backdrop = backdrop,
-        config = config,
-        modifier = Modifier.fillMaxWidth(),
-        insideMargin = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-        maxHeight = 260.dp,
-        onExpandedChange = {},
-        onSelectedIndexChange = { index -> onSelected(options[index.coerceIn(options.indices)]) }
-    )
-}
-
-@Composable
 fun SettingsActionButton(
     label: String,
     backdrop: Backdrop?,
@@ -1794,8 +1752,6 @@ fun ScheduleSettingsContent(
     onNotificationsEnabledChange: (Boolean) -> Unit,
     notificationMode: NotificationMode,
     onNotificationModeChange: (NotificationMode) -> Unit,
-    liveUpdateChipTextMode: LiveUpdateChipTextMode,
-    onLiveUpdateChipTextModeChange: (LiveUpdateChipTextMode) -> Unit,
     autoCurrentWeek: Boolean,
     onAutoCurrentWeekChange: (Boolean) -> Unit,
     hideEmptyWeekends: Boolean,
@@ -1818,8 +1774,7 @@ fun ScheduleSettingsContent(
     onPeriodsChange: (List<PeriodEntity>) -> Unit,
     detectedWeek: Int,
     detectedWeekDescription: String,
-    error: String?,
-    onPreviewLiveUpdate: () -> Unit
+    error: String?
 ) {
     val appContext = LocalContext.current
     val topPadding = detailContentTopPadding()
@@ -1928,24 +1883,20 @@ fun ScheduleSettingsContent(
                     SettingsDivider()
                     SettingsTextFieldRow("提前提醒分钟", leadMinutes, { onLeadMinutesChange(it.filter(Char::isDigit)) }, KeyboardType.Number, enabled = notificationsEnabled)
                     SettingsDivider()
-                    SettingsChoiceRow("通知样式", notificationMode, backdrop, state.config, onNotificationModeChange)
-                    if (notificationMode == NotificationMode.LIVE_UPDATE) {
-                        SettingsDivider()
-                        SettingsLiveUpdateChipTextRow(liveUpdateChipTextMode, backdrop, state.config, onLiveUpdateChipTextModeChange)
-                    }
+                    SettingsChoiceRow("通知样式", notificationMode, backdrop, state.config, onSelected = { mode ->
+                        if (mode == NotificationMode.LIVE_UPDATE) {
+                            // 实时活动尚未开放：提示敬请期待，并保持普通通知。
+                            Toast.makeText(appContext, "敬请期待", Toast.LENGTH_SHORT).show()
+                            onNotificationModeChange(NotificationMode.STANDARD)
+                        } else {
+                            onNotificationModeChange(mode)
+                        }
+                    })
                 }
-            }
-            item(key = "notification-compatibility") {
-                Text(
-                    "实时活动目前仅支持原生安卓系统、ColorOS16、HyperOS 3.0.300以上版本、荣耀 MagicOS 10。原生安卓机型请选择课程名称或者倒计时。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
             }
             item(key = "notification-permissions") {
                 SettingsGroup(backdrop = backdrop, config = state.config, modifier = Modifier.fillMaxWidth()) {
-                    SettingsInfoRow("保活权限", "为保证课程提醒和实时活动稳定弹出，请允许电池优化例外，并在系统权限管理中允许后台运行或自启动。不同厂商的入口可能不同。")
+                    SettingsInfoRow("保活权限", "为保证课程提醒稳定弹出，请允许电池优化例外，并在系统权限管理中允许后台运行或自启动。不同厂商的入口可能不同。")
                     SettingsDivider()
                     Row(
                         modifier = Modifier
@@ -1962,7 +1913,20 @@ fun ScheduleSettingsContent(
                     }
                 }
             }
-            item(key = "notification-preview") { SettingsActionButton("测试实时活动", backdrop, onClick = onPreviewLiveUpdate, modifier = Modifier.fillMaxWidth()) }
+            item(key = "notification-preview") {
+                SettingsActionButton(
+                    "测试通知",
+                    backdrop,
+                    onClick = {
+                        // 倒计时分钟数跟随「提前提醒分钟」设置。
+                        val testLead = leadMinutes.toIntOrNull() ?: state.config.notificationLeadMinutes
+                        if (!NotificationScheduler.showTestNotification(appContext, testLead)) {
+                            Toast.makeText(appContext, "请先在系统设置中开启通知权限", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         error?.let {
             item(key = "notification-error") { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 4.dp)) }
@@ -3474,7 +3438,6 @@ fun ScheduleConfigScreen(
     backdrop: Backdrop?,
     section: SettingsSection,
     onSave: (ScheduleConfigEntity, List<PeriodEntity>) -> Unit,
-    onPreviewLiveUpdate: () -> Unit,
     exitCommitRequest: Int = 0,
     onExitCommitFinished: (Boolean) -> Unit = {},
     onExitInterceptionChange: (Boolean) -> Unit = {}
@@ -3488,8 +3451,16 @@ fun ScheduleConfigScreen(
     var currentWeek by remember { mutableStateOf(state.config.currentWeek.toString()) }
     var leadMinutes by remember { mutableStateOf(state.config.notificationLeadMinutes.toString()) }
     var notificationsEnabled by remember { mutableStateOf(state.config.notificationsEnabled) }
-    var notificationMode by remember { mutableStateOf(state.config.notificationMode) }
-    var liveUpdateChipTextMode by remember { mutableStateOf(state.config.liveUpdateChipTextMode) }
+    // 实时活动已下线：历史数据存留的 LIVE_UPDATE 按普通通知展示，并随自动保存落库。
+    var notificationMode by remember {
+        mutableStateOf(
+            if (state.config.notificationMode == NotificationMode.LIVE_UPDATE) {
+                NotificationMode.STANDARD
+            } else {
+                state.config.notificationMode
+            }
+        )
+    }
     var autoCurrentWeek by remember { mutableStateOf(state.config.autoCurrentWeek) }
     var hideEmptyWeekends by remember { mutableStateOf(state.config.hideEmptyWeekends) }
     var termStartDate by remember { mutableStateOf(state.config.termStartDate.orEmpty()) }
@@ -3517,8 +3488,11 @@ fun ScheduleConfigScreen(
         currentWeek = state.config.currentWeek.toString()
         leadMinutes = state.config.notificationLeadMinutes.toString()
         notificationsEnabled = state.config.notificationsEnabled
-        notificationMode = state.config.notificationMode
-        liveUpdateChipTextMode = state.config.liveUpdateChipTextMode
+        notificationMode = if (state.config.notificationMode == NotificationMode.LIVE_UPDATE) {
+            NotificationMode.STANDARD
+        } else {
+            state.config.notificationMode
+        }
         autoCurrentWeek = state.config.autoCurrentWeek
         hideEmptyWeekends = state.config.hideEmptyWeekends
         termStartDate = state.config.termStartDate.orEmpty()
@@ -3540,7 +3514,6 @@ fun ScheduleConfigScreen(
             leadMinutes != lastSavedConfig.notificationLeadMinutes.toString() ||
             notificationsEnabled != lastSavedConfig.notificationsEnabled ||
             notificationMode != lastSavedConfig.notificationMode ||
-            liveUpdateChipTextMode != lastSavedConfig.liveUpdateChipTextMode ||
             autoCurrentWeek != lastSavedConfig.autoCurrentWeek ||
             hideEmptyWeekends != lastSavedConfig.hideEmptyWeekends ||
             termStartDate != lastSavedConfig.termStartDate.orEmpty() ||
@@ -3675,7 +3648,6 @@ fun ScheduleConfigScreen(
                 hideEmptyWeekends = hideEmptyWeekends,
                 notificationsEnabled = notificationsEnabled,
                 notificationMode = notificationMode,
-                liveUpdateChipTextMode = liveUpdateChipTextMode,
                 classDurationMinutes = classDuration,
                 breakDurationMinutes = breakDuration
                 ,morningPeriodCount = morningPeriodCount
@@ -3779,8 +3751,7 @@ fun ScheduleConfigScreen(
         section,
         leadMinutes,
         notificationsEnabled,
-        notificationMode,
-        liveUpdateChipTextMode
+        notificationMode
     ) {
         if (section == SettingsSection.Notifications && computeDirty()) {
             saveConfigDraft()
@@ -3801,8 +3772,6 @@ fun ScheduleConfigScreen(
         onNotificationsEnabledChange = { notificationsEnabled = it },
         notificationMode = notificationMode,
         onNotificationModeChange = { notificationMode = it },
-        liveUpdateChipTextMode = liveUpdateChipTextMode,
-        onLiveUpdateChipTextModeChange = { liveUpdateChipTextMode = it },
         autoCurrentWeek = autoCurrentWeek,
         onAutoCurrentWeekChange = { autoCurrentWeek = it },
         hideEmptyWeekends = hideEmptyWeekends,
@@ -3848,8 +3817,7 @@ fun ScheduleConfigScreen(
         onPeriodsChange = { periods = it },
         detectedWeek = detectedWeek,
         detectedWeekDescription = detectedWeekDescription,
-        error = error,
-        onPreviewLiveUpdate = onPreviewLiveUpdate
+        error = error
     )
 
     if (showExitSaveConfirm) {

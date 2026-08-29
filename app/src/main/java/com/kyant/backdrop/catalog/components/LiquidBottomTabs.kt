@@ -253,7 +253,7 @@ fun LiquidBottomTabs(
                     animationScope.launch {
                         offsetAnimation.animateTo(
                             0f,
-                            spring(1f, 300f, 0.5f)
+                            spring(1f, 700f, 0.5f)
                         )
                     }
                 },
@@ -271,8 +271,9 @@ fun LiquidBottomTabs(
         LaunchedEffect(selectedTabIndex()) {
             val index = selectedTabIndex().fastCoerceIn(0, tabsCount - 1)
             if (currentIndex != index || abs(dampedDragAnimation.targetValue - index.toFloat()) > 0.01f) {
+                // 只更新索引：下面的 snapshotFlow 统一负责启动滑动动画与回调，
+                // 避免同一索引变化被两个入口各触发一次动画（动画排队导致的「慢半拍」）。
                 currentIndex = index
-                dampedDragAnimation.animateToValue(index.toFloat())
             }
         }
         LaunchedEffect(dampedDragAnimation) {
