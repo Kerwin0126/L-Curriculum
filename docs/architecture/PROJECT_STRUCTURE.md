@@ -6,7 +6,6 @@
 
 - `app/`：Android 应用主模块。
 - `benchmark/`：Macrobenchmark 与 Baseline Profile，不承载业务实现。
-- `sleepdown-site/`：独立静态官网，不参与 Android Gradle 构建。
 - `docs/`：架构、迁移、性能与交接记录。
 - `patches/`：第三方依赖补丁。
 - `release-notes/`：面向用户的版本说明。

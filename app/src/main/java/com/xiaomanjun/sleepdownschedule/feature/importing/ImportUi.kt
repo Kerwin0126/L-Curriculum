@@ -6,7 +6,6 @@ import com.xiaomanjun.sleepdownschedule.glass.ui.*
 import com.xiaomanjun.sleepdownschedule.feature.home.*
 import com.xiaomanjun.sleepdownschedule.feature.home.day.*
 import com.xiaomanjun.sleepdownschedule.feature.settings.*
-import com.xiaomanjun.sleepdownschedule.app.config.SleepDownRemoteConfig
 import com.xiaomanjun.sleepdownschedule.core.remoteconfig.*
 import com.xiaomanjun.sleepdownschedule.*
 
@@ -17,7 +16,6 @@ import android.widget.Toast
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -35,7 +33,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,14 +47,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -312,54 +305,6 @@ private fun AiManualImportDialogContent(
             }
         }
     }
-    }
-}
-
-@Composable
-fun DonateSettingsScreen(
-	state: AppState,
-	backdrop: Backdrop?
-) {
-	val scope = rememberCoroutineScope()
-	val remoteConfigState by SleepDownRemoteConfig.state.collectAsStateWithLifecycle()
-	val donationSection = remoteConfigState.bootstrap?.donations
-	LaunchedEffect(Unit) {
-		SleepDownRemoteConfig.refresh(scope, force = true)
-	}
-    val topPadding = detailContentTopPadding()
-    LazyColumn(
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPadding, bottom = DockScrollPadding),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        item {
-            SettingsGroup(backdrop = backdrop, config = state.config, modifier = Modifier.fillMaxWidth()) {
-                SettingsInfoRow("感谢支持", "LX 课程表会继续保持简洁、免费和尽量少打扰。你的捐赠会用于测试设备、应用维护和后续功能适配。捐赠完全自愿，不会影响任何功能使用。")
-            }
-        }
-        item {
-            Image(
-                painter = painterResource(R.drawable.donate_reward),
-                contentDescription = "微信赞赏码",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp)),
-                contentScale = ContentScale.FillWidth
-            )
-        }
-		if (donationSection?.published == true) {
-			item(key = "donation-thanks-inline") {
-				DonationThanksPanel(
-					state = state,
-					backdrop = backdrop,
-					section = donationSection
-				)
-			}
-		}
-        item {
-            SettingsGroup(backdrop = backdrop, config = state.config, modifier = Modifier.fillMaxWidth()) {
-                SettingsInfoRow("使用方式", "打开微信扫一扫，识别上方赞赏码即可。谢谢你愿意支持这个小小的课程表继续变好。")
-            }
-        }
     }
 }
 

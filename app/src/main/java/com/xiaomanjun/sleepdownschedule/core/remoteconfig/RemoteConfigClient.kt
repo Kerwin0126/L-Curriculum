@@ -62,13 +62,6 @@ internal class RemoteConfigClient(
     private fun validateBootstrap(bootstrap: RemoteBootstrap) {
         require(bootstrap.schemaVersion == 1) { "Unsupported bootstrap schema" }
         require(bootstrap.serverTime > 0) { "Invalid server time" }
-		require(bootstrap.donations.title.length <= 120) { "Donation title is too long" }
-		require(bootstrap.donations.message.length <= 500) { "Donation message is too long" }
-		bootstrap.donations.entries.forEach { item ->
-			require(item.supporterId.isNotBlank() && item.supporterId.length <= 120) { "Invalid donation supporter ID" }
-			require(item.amountCents > 0) { "Invalid donation amount" }
-			require(item.currency.length == 3 && item.currency.all(Char::isUpperCase)) { "Invalid donation currency" }
-		}
     }
 
     private fun java.io.InputStream.readBytesLimited(limit: Int): ByteArray {
